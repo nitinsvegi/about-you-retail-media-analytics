@@ -8,21 +8,6 @@ This project builds a campaign-performance reporting layer for **ABOUT YOU Retai
 
 It brings together GA4 tracking events, teaser campaign metadata from a CMS, and online-placement booking information from Salesforce. The goal is to provide reliable reporting on impressions, clicks, click-through rate (CTR), and benchmark performance while making source-data gaps and uncertain attribution visible.
 
-The workflow follows:
-
-- Raw sources → **staging** → **intermediate enrichment** → **campaign dimension and event fact** → **daily reporting mart**
-- **CMS snapshot** to retain teaser metadata changes and deletions from the point snapshotting begins
-- **Source EDA, dbt tests, and SQL reconciliation** to validate the reporting output
-
----
-
-## Business Questions Addressed
-
-- How many impressions and clicks did campaigns receive, and what was their CTR?
-- How does performance differ by campaign type, device, targeting gender, and country cluster?
-- How much online-placement activity can be linked to a single Salesforce booking configuration?
-- How much activity lacks a reliable benchmark or has ambiguous attribution?
-
 ---
 
 ## Data Sources
@@ -31,36 +16,37 @@ The supplied GA4 extract covers **June 7–8, 2025** only. Results describe this
 
 ---
 
-## Data Model Overview
+## Project Structure
 
-### Staging (`stg_`)
+```text
+models/
+  staging/
+    stg_tracking_events.sql
+    stg_teasers_cms.sql
+    stg_online_placements_salesforce.sql
+  intermediate/
+    int_teaser_events_enriched.sql
+    int_online_placement_events_enriched.sql
+  core/
+    dim_campaign.sql
+    fct_campaign_events.sql
+  marts/
+    mart_campaign_daily_performance.sql
 
-- `stg_tracking_events` — standardizes GA4 events and campaign fields
-- `stg_teasers_cms` — standardizes current CMS campaign metadata
-- `stg_online_placements_salesforce` — removes fully empty Salesforce rows and parses source fields while retaining meaningful incomplete records
+snapshots/
+  snap_teasers_cms.sql
 
-### Snapshot
+analyses/
+  about_you_eda.sql
+  business_reporting.sql
+  data_validation.sql
+  summary.md
 
-- `snap_teasers_cms` — tracks changes to CMS teaser records and invalidates records removed from the source. History is available **from the first snapshot run onward**, not retroactively.
+# YAML source, schema, and project configuration files are
+# included in their respective dbt project locations.
+```
 
-### Intermediate (`int_`)
-
-- `int_teaser_events_enriched` — enriches GA4 teaser events with time-aware CMS metadata while preserving unmatched events
-- `int_online_placement_events_enriched` — matches online-placement events to Salesforce by normalized name and booking-date window, distinguishing unique, ambiguous, and unmatched cases
-
-### Core analytics
-
-**Dimension**
-
-- `dim_campaign` — one row per source-qualified campaign identity. Uses current CMS plus historically enriched teaser events to retain campaigns with GA4 activity even after CMS removal; online-placement name-based identities remain provisional.
-
-**Fact**
-
-- `fct_campaign_events` — unified event-level fact for teaser and online-placement impressions and clicks
-
-### Reporting
-
-- `mart_campaign_daily_performance` — daily impressions, clicks, CTR, benchmark coverage, and campaign performance breakdowns at the grain of **event date × campaign × device × targeting gender × country cluster**
+The tree shows the **logical model organization**; folder names should match the submitted repository if they differ.
 
 ---
 
@@ -98,7 +84,6 @@ Validation covers:
 - Salesforce matching ambiguity and benchmark coverage
 - Fact-to-dimension coverage and reporting-grain uniqueness
 - Impression and click reconciliation between the fact and daily mart
-
 
 Supporting queries:
 
