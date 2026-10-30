@@ -92,7 +92,6 @@ Supporting queries:
 - `analyses/about_you_eda.sql`
 - `analyses/business_reporting.sql`
 - `analyses/data_validation.sql`
-- `analyses/summary.md`
 
 ---
 
