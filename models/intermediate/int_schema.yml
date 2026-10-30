@@ -1,0 +1,225 @@
+
+version: 2
+
+models:
+
+  # --------------------------------------
+  # int_teaser_events_enriched
+  # --------------------------------------
+  - name: int_teaser_events_enriched
+    description: >
+      Event-level teaser impressions and clicks enriched with CMS campaign metadata. 
+      Uses point-in-time snapshot versions where available and the first observed CMS version as a provisional
+      baseline for events predating snapshot coverage. Preserves the original GA4 event grain.
+
+    columns:
+      - name: session_id
+        description: Session identifier from GA4.
+
+      - name: visitor_id
+        description: Visitor identifier from GA4.
+
+      - name: device
+        description: Standardized device category.
+
+      - name: event_timestamp
+        description: Timestamp of the GA4 event.
+
+      - name: event_date
+        description: UTC date derived from the event timestamp.
+        data_tests:
+          - not_null
+
+      - name: event_type
+        description: Standardized GA4 event type.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['impression', 'click']
+
+      - name: campaign_id
+        description: Campaign identifier used to match CMS metadata.
+        data_tests:
+          - not_null
+
+      - name: campaign_name
+        description: Original campaign name from GA4.
+
+      - name: campaign_name_normalized
+        description: Normalized GA4 campaign name.
+
+      - name: campaign_type
+        description: GA4 campaign classification.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['teaser']
+
+      - name: cms_campaign_name
+        description: >
+          Campaign name from the matched point-in-time CMS version, or the first observed version when using a baseline.
+
+      - name: targeting_gender
+        description: >
+          Campaign targeting gender from the matched CMS version.
+          Baseline values are provisional and do not establish historical targeting at the event timestamp.
+
+      - name: active_from
+        description: >
+          Campaign activation start timestamp from the selected
+          CMS version. Not the snapshot validity timestamp.
+
+      - name: active_to
+        description: >
+          Campaign activation end timestamp from the selected
+          CMS version. NULL may indicate an open-ended campaign.
+
+      - name: metadata_source
+        description: >
+          Identifies how CMS metadata was assigned. Point-in-time means snapshot coverage exists for the event timestamp;
+          baseline_assumed means the event predates the first observed snapshot; 
+          unmatched means no applicable CMS metadata was found.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time
+                  - baseline_assumed
+                  - unmatched
+
+      - name: impressions
+        description: 1 for an impression event, otherwise 0.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+
+      - name: clicks
+        description: 1 for a click event, otherwise 0.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+
+  
+  # --------------------------------------
+  # int_online_placement_events_enriched
+  # --------------------------------------
+  - name: int_online_placement_events_enriched
+    description: >
+      Event-level GA4 online-placement data enriched with Salesforce booking metadata. 
+      Matching uses normalized campaign name and event date within the Salesforce booking window.
+
+      Exact duplicate Salesforce configurations are removed before matching. 
+      Events with exactly one eligible configuration are enriched with targeting gender, country cluster, and benchmark CTR. 
+      Events with multiple configurations are flagged as ambiguous, 
+      while events without a matching booking window are flagged as unmatched.
+
+      All original GA4 events are preserved, including identical event rows. 
+      Each row represents one original GA4 tracking event.
+
+    columns:
+      - name: session_id
+        description: GA4 session identifier.
+
+      - name: visitor_id
+        description: GA4 visitor identifier.
+
+      - name: device
+        description: Device associated with the tracking event.
+
+      - name: event_timestamp
+        description: Timestamp of the GA4 tracking event.
+
+      - name: event_date
+        description: Date of the tracking event, used for Salesforce booking-window matching.
+        data_tests:
+          - not_null
+
+      - name: event_type
+        description: GA4 event type, either impression or click.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['impression', 'click']
+
+      - name: campaign_id
+        description: >
+          Campaign identifier from GA4, where available.
+          Online-placement events may not contain a campaign ID.
+
+      - name: campaign_name
+        description: Original campaign name from GA4.
+
+      - name: campaign_name_normalized
+        description: Lowercase, trimmed campaign name used for Salesforce matching.
+        data_tests:
+          - not_null
+
+      - name: campaign_type
+        description: GA4 campaign classification.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['online_placement']
+
+      - name: targeting_gender
+        description: >
+          Salesforce targeting gender for uniquely matched events.
+          NULL for ambiguous or unmatched events, or when the
+          matched Salesforce configuration has no gender.
+
+      - name: country_cluster
+        description: >
+          Salesforce country cluster for uniquely matched events.
+          NULL when no unique configuration is available or the
+          matched configuration has no country cluster.
+
+      - name: benchmark_ctr
+        description: >
+          Salesforce benchmark click-through rate expressed as a decimal, for example 0.0057 for 0.57%.
+          Available only when a unique Salesforce configuration
+          provides a benchmark.
+
+      - name: matching_configurations
+        description: >
+          Number of distinct Salesforce configurations matching the normalized campaign name and event date.
+        data_tests:
+          - not_null
+
+      - name: match_status
+        description: >
+          Salesforce matching result. Unique means exactly one eligible configuration, 
+          ambiguous means multiple eligible configurations, 
+          and unmatched means none.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['unique', 'ambiguous', 'unmatched']
+
+      - name: impressions
+        description: 1 for an impression event, otherwise 0.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+
+      - name: clicks
+        description: 1 for a click event, otherwise 0.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false

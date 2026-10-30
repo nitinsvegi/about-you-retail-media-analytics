@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: aboutyou_raw
+    description: "Raw source tables loaded into BigQuery for the ABOUT YOU Retail Media assessment."
+    database: about-you-assignment
+    schema: aboutyou_raw
+
+    tables:
+      - name: tracking_events
+        description: "GA4 tracking events containing campaign impressions and clicks."
+
+      - name: teasers_cms
+        description: "CMS campaign metadata for teaser campaigns."
+
+      - name: online_placements_salesforce
+        description: "Salesforce online-placement campaign metadata maintained through Google Sheets."

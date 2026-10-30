@@ -1,0 +1,97 @@
+version: 2
+
+models:
+
+  # --------------------------------------
+  # mart_campaign_daily_performance
+  # --------------------------------------
+  - name: mart_campaign_daily_performance
+    description: >
+      Daily campaign performance mart combining teaser and online-placement activity for Retail Media reporting.
+      Each row represents one campaign, date, device and targeting-gender combination with recorded GA4 activity.
+      Impressions and clicks are additive metrics. CTR is calculated from their totals. 
+      Benchmark CTR is available only when a reporting group has complete and consistent Salesforce benchmark attribution.
+
+    columns:
+      - name: event_date
+        description: UTC reporting date.
+        data_tests:
+          - not_null
+
+      - name: campaign_key
+        description: >
+          Source-qualified campaign identifier linking the mart to dim_campaign.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_campaign')
+                field: campaign_key
+
+      - name: campaign_type
+        description: Campaign classification.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['teaser', 'online_placement']
+
+      - name: campaign_id
+        description: >
+          Original CMS campaign ID for teasers. NULL for online placements.
+
+      - name: campaign_name
+        description: Campaign name used for dashboard reporting.
+        data_tests:
+          - not_null
+
+      - name: device
+        description: Device category recorded in GA4.
+
+      - name: targeting_gender
+        description: >
+          Gender targeted by the campaign configuration, where reliably available. 
+          This does not represent the observed visitor's gender.
+  
+      - name: country_cluster
+        description: >
+          Source-provided Salesforce booking geography, where reliably matched. 
+          Contain regional labels, country codes or unmapped numeric values.
+          NULL for teasers and unavailable or ambiguous Salesforce matches. 
+          Does not represent the svisitor's actual location.
+
+      - name: impressions
+        description: Total recorded impression events.
+        data_tests:
+          - not_null
+
+      - name: impressions_with_benchmark
+        description: >
+          Number of impressions with an available Salesforce benchmark CTR. 
+          Additive across reporting dimensions and used to calculate benchmark coverage.
+        data_tests:
+          - not_null
+
+      - name: clicks_with_benchmark
+        description: >
+          Number of clicks with an available Salesforce benchmark CTR. Additive across reporting dimensions
+          and used to calculate actual CTR for the benchmark-covered event population.
+        data_tests:
+          - not_null
+
+      - name: clicks
+        description: Total recorded click events.
+        data_tests:
+          - not_null
+
+      - name: ctr
+        description: >
+          Click-through rate calculated as clicks divided by impressions. NULL when impressions are zero.
+          Recalculate from summed metrics for dashboard totals.
+
+      - name: benchmark_ctr
+        description: >
+          Expected CTR from Salesforce for online placements.
+          Populated only when all events within the reporting group have a single consistent benchmark.
+          NULL for teasers and incomplete or conflicting benchmark attribution. 
+          Not an additive metric.

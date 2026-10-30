@@ -1,0 +1,114 @@
+version: 2
+
+models:
+
+  # --------------------------------------
+  # fct_campaign_events
+  # --------------------------------------
+  - name: fct_campaign_events
+    description: >
+      Unified event-level fact table combining teaser and online-placement GA4 tracking events. 
+      Each row represents one original tracking event, with standardized campaign identifiers, 
+      attribution attributes and additive impression and click metrics. 
+      Events are retained even when campaign metadata cannot be uniquely attributed.
+
+    columns:
+      - name: campaign_key
+        description: >
+          Source-qualified campaign key linking each event to dim_campaign.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_campaign')
+                field: campaign_key
+
+      - name: campaign_type
+        description: Type of campaign generating the event.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['teaser', 'online_placement']
+
+      - name: campaign_id
+        description: Original GA4 campaign ID, where available.
+
+      - name: campaign_name
+        description: Campaign name recorded in GA4.
+
+      - name: session_id
+        description: GA4 session identifier.
+
+      - name: visitor_id
+        description: GA4 visitor identifier.
+
+      - name: device
+        description: Device category associated with the event.
+
+      - name: event_timestamp
+        description: Timestamp of the original tracking event.
+        data_tests:
+          - not_null
+
+      - name: event_date
+        description: UTC calendar date of the tracking event.
+        data_tests:
+          - not_null
+
+      - name: event_type
+        description: Type of tracked event.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['impression', 'click']
+
+      - name: targeting_gender
+        description: >
+          Gender targeting from matched campaign metadata.
+          NULL where unavailable or ambiguous.
+
+      - name: country_cluster
+        description: >
+          Salesforce country cluster for uniquely matched online-placement events, 
+          where available.
+
+      - name: benchmark_ctr
+        description: >
+          Salesforce benchmark CTR stored as a decimal fraction.
+          Populated only when a unique Salesforce configuration
+          supplies a benchmark. Not directly additive.
+
+      - name: attribution_status
+        description: >
+          Metadata matching outcome. Teaser values describe CMS historical matching; 
+          online-placement values describe Salesforce configuration matching.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - point_in_time
+                  - baseline_assumed
+                  - unmatched
+                  - unique
+                  - ambiguous
+
+      - name: impressions
+        description: One for an impression event, otherwise zero.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+
+      - name: clicks
+        description: One for a click event, otherwise zero.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false

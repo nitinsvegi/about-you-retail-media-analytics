@@ -1,0 +1,197 @@
+version: 2
+
+models:
+
+  # --------------------------------------
+  # stg_tracking_events
+  # --------------------------------------
+  - name: stg_tracking_events
+    description: >
+      Staging model for immutable GA4 tracking events.
+      Standardizes event attributes and preserves all recorded impressions and clicks without deduplication.
+      Materialized as a regular BigQuery table for historical sample validation in the assessment environment.
+      For production volumes exceeding 1 TB/day, an incremental partitioned implementation is recommended.
+
+    columns:
+      - name: session_id
+        description: >
+          GA4 session identifier standardized as a trimmed string.
+          May be NULL if missing in the source.
+
+      - name: visitor_id
+        description: >
+          GA4 visitor identifier standardized as a trimmed string.
+          May be NULL if missing in the source.
+
+      - name: device
+        description: >
+          Device category associated with the event,
+          standardized to lowercase.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['mobile', 'desktop']
+
+      - name: event_timestamp
+        description: >
+          Original GA4 event timestamp converted to TIMESTAMP.
+          NULL indicates a missing or invalid source timestamp.
+
+      - name: event_date
+        description: >
+          UTC calendar date derived from event_timestamp.
+          Used for daily reporting and recommended production partitioning. NULL when the timestamp is invalid.
+
+      - name: event_type
+        description: >
+          Standardized event classification.
+          Expected values are impression and click.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['impression', 'click']
+
+      - name: campaign_id
+        description: >
+          Campaign identifier provided by GA4.
+          May be NULL for online placement campaigns.
+
+      - name: campaign_name
+        description: >
+          Original campaign name with surrounding whitespace removed.
+
+      - name: campaign_name_normalized
+        description: >
+          Lowercase and trimmed campaign name used for matching tracking events to campaign metadata.
+
+      - name: campaign_type
+        description: >
+          Standardized campaign classification used to identify the appropriate enrichment logic.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['teaser', 'online_placement']
+
+      - name: stg_processed_at
+        description: >
+          Timestamp when dbt processed the record into staging.
+          This is not the original GA4 ingestion timestamp.
+          Rebuilding the table updates this value.
+        data_tests:
+          - not_null
+
+  # --------------------------------------
+  # stg_teasers_cms
+  # --------------------------------------
+  - name: stg_teasers_cms
+    description: >
+      Standardized CMS campaign metadata for teaser campaigns.
+      Preserves campaign identifiers, names, targeting and active date ranges without filtering historical records.
+      Source timestamps without timezone information are interpreted as UTC.
+      The source contains only current and future campaigns, with deactivated campaigns removed daily.
+      Historical changes and deletions will be preserved through a downstream dbt snapshot.
+
+    columns:
+      - name: campaign_id
+        description: "Unique campaign identifier from the CMS."
+        data_tests:
+          - not_null
+          - unique
+
+      - name: campaign_name
+        description: "Original campaign name with surrounding whitespace removed."
+
+      - name: campaign_name_normalized
+        description: "Lowercase, trimmed campaign name."
+
+      - name: targeting_gender
+        description: "Campaign targeting gender, not the visitor's gender."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - female
+                  - male
+                  - unisex
+                  - girls
+                  - boys
+                  - kids
+                  - babies
+
+      - name: active_from
+        description: "Campaign activation start timestamp, interpreted as UTC."
+        data_tests:
+          - not_null
+
+      - name: active_to
+        description: >
+          Campaign activation end timestamp, interpreted as UTC.
+          May be NULL for campaigns without a specified end date.
+
+# --------------------------------------
+  # stg_online_placements_salesforce
+  # --------------------------------------
+  - name: stg_online_placements_salesforce
+    description: >
+      Staging view for on-site placement campaign metadata exported from Salesforce through manually maintained
+      Google Sheets. 
+      Standardizes campaign names, dates, targeting attributes, reach, CPM, and benchmark metrics.
+      Completely blank spreadsheet rows are excluded, while partially populated and duplicate records are retained
+      for downstream validation and ambiguity handling.
+      The source does not provide a reliable unique record key.
+
+    columns:
+      - name: campaign_name
+        description: >
+          Campaign name from the Salesforce export with surrounding whitespace removed. 
+          May be NULL when missing from the manually maintained source.
+
+      - name: campaign_name_normalized
+        description: >
+          Lowercase and trimmed campaign name used for candidate matching with GA4 tracking events.
+          Not a unique campaign identifier.
+
+      - name: campaign_start
+        description: >
+          Campaign start date parsed from DD.MM.YYYY format.
+          NULL indicates a missing or unparseable source date.
+
+      - name: campaign_end
+        description: >
+          Campaign end date parsed from DD.MM.YYYY format.
+          NULL indicates a missing or unparseable source date.
+
+      - name: targeting_gender
+        description: >
+          Targeting gender standardized to lowercase.
+          Missing values remain NULL rather than being interpreted as targeting all genders.
+
+      - name: country_cluster
+        description: >
+          Country or market cluster associated with the placement, with surrounding whitespace removed.
+
+      - name: reach_numeric
+        description: >
+          Reach converted to NUMERIC after removing comma thousands separators. Missing or invalid values
+          remain NULL.
+
+      - name: currency_cpm
+        description: >
+          Currency associated with CPM, preserved as provided after trimming whitespace.
+
+      - name: cpm
+        description: >
+          Cost per thousand impressions converted to NUMERIC.
+          Missing or invalid values remain NULL.
+
+      - name: benchmark_ctr
+        description: >
+          Benchmark click-through rate stored as a decimal ratio. For example, 0.57% becomes 0.0057.
+          Missing or invalid values remain NULL.
+
+      - name: benchmark_clicks
+        description: >
+          Benchmark clicks converted to NUMERIC.
+          Missing or invalid values remain NULL.

@@ -1,0 +1,61 @@
+
+version: 2
+
+models:
+
+  # --------------------------------------
+  # dim_campaign
+  # --------------------------------------
+- name: dim_campaign
+  description: >
+    Unified campaign dimension containing one record per source-qualified campaign identity.
+
+    Teaser campaign identities are derived from current CMS records and enriched GA4 events, 
+    allowing campaigns with historical activity to remain available after CMS deletion.
+
+    Online-placement identities are derived from normalized campaign names in Salesforce and GA4. 
+    These identifiers remain provisional until stable campaign IDs are available.
+
+    Time-dependent campaign attributes are resolved in the intermediate models rather than this dimension.
+
+  columns:
+    - name: campaign_key
+      description: >
+        Source-qualified surrogate campaign key.
+        Generated from the CMS campaign ID for teasers and normalized campaign name for online placements.
+      data_tests:
+        - not_null
+        - unique
+
+    - name: campaign_type
+      description: Campaign type associated with the identity.
+      data_tests:
+        - not_null
+        - accepted_values:
+            arguments:
+              values: ['teaser', 'online_placement']
+
+    - name: campaign_id
+      description: >
+        Original teaser campaign ID. NULL for online placements.
+
+    - name: campaign_name
+      description: >
+        Preferred campaign name from current source metadata, or enriched historical events when current teaser
+        metadata is unavailable.
+
+    - name: campaign_name_normalized
+      description: >
+        Normalized campaign name used for online-placement identity resolution and name standardization.
+
+    - name: campaign_identity_source
+      description: >
+        Method used to construct the campaign identity.
+      data_tests:
+        - not_null
+        - accepted_values:
+            arguments:
+              values:
+                - cms_campaign_id
+                - normalized_campaign_name
+

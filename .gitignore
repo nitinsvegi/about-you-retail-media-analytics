@@ -1,0 +1,16 @@
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+profiles.yml
+**/profiles.yml
+*.json.key
+*service-account*.json
+*credentials*.json
+target/
+logs/
+dbt_packages/
+.DS_Store
+__pycache__/
+*.pyc
