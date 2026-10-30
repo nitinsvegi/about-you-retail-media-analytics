@@ -40,6 +40,8 @@ analyses/
   about_you_eda.sql
   business_reporting.sql
   data_validation.sql
+ 
+docs/ 
   summary.md
 
 # YAML source, schema, and project configuration files are
